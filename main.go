@@ -29,7 +29,7 @@ var pretty bool
 var name string
 
 func init() {
-	flag.BoolVar(&pretty, "p", false, "")
+	flag.BoolVar(&pretty, "p", false, "pretty print json")
 	flag.Parse()
 }
 
@@ -37,14 +37,15 @@ func main() {
 	defer recovery()
 
 	name = path.Base(os.Args[0])
+	args := flag.Args()
 
-	if len(os.Args) < 2 {
+	if len(args) == 0 {
 		printUsage()
 	}
 
 	env := make(map[string]string)
 
-	for _, arg := range os.Args[1:] {
+	for _, arg := range args {
 		if strings.Contains(arg, "=") {
 			v := strings.SplitN(arg, "=", 2)
 			env[v[0]] = v[1]
