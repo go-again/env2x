@@ -7,7 +7,7 @@
 ```
 env2json [-p] VAR1 [VAR2] [VAR3{=value}] ...
 env2json VAR1 [VAR2] [VAR3{=value}] ...
-env2env VAR1 [VAR2] [VAR3{=value}] ...
+env2env  [-s] VAR1 [VAR2] [VAR3{=value}] ...
 ```
 
 ### Examples
@@ -42,4 +42,10 @@ USER: john
 HOME="/Users/john"
 PATH="/Users/john/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 USER="john"
+```
+
+`env2env -s USER HOME PATH=$HOME/bin:$PATH`
+
+```bash
+HOME="/Users/john" PATH="/Users/john/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" USER="john" 
 ```

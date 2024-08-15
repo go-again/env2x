@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,11 +26,13 @@ var names = []string{
 var usage string
 
 var pretty bool
+var single bool
 
 var name string
 
 func init() {
 	flag.BoolVar(&pretty, "p", false, "pretty print json")
+	flag.BoolVar(&single, "s", false, "single line env")
 	flag.Parse()
 }
 
@@ -43,15 +46,35 @@ func main() {
 		printUsage()
 	}
 
-	env := make(map[string]string)
+	env := make(map[string]any)
 
 	for _, arg := range args {
+		var k string
+		var v any
 		if strings.Contains(arg, "=") {
-			v := strings.SplitN(arg, "=", 2)
-			env[v[0]] = v[1]
+			s := strings.SplitN(arg, "=", 2)
+			k = s[0]
+			v = s[1]
 		} else {
-			env[arg] = os.Getenv(arg)
+			k = arg
+			v = os.Getenv(k)
 		}
+
+		switch strings.ToLower(v.(string)) {
+		case "true", "false":
+			v, _ = strconv.ParseBool(v.(string))
+		default:
+			x, err := strconv.ParseFloat(v.(string), 64)
+			if err == nil {
+				if strings.Contains(v.(string), ".") &&
+					fmt.Sprintf("%f", v) != fmt.Sprintf("%v", x) {
+					v = x
+				} else {
+					v = int64(x)
+				}
+			}
+		}
+		env[k] = v
 	}
 
 	var (
@@ -69,7 +92,7 @@ func main() {
 	case "env2yaml":
 		o, err = yaml.Marshal(env)
 	case "env2env":
-		m := make(map[string]string)
+		m := make(map[string]any)
 		keys := make([]string, 0, len(env))
 		for k, v := range env {
 			m[k] = v
@@ -79,9 +102,28 @@ func main() {
 
 		e := make([]string, 0, len(keys))
 		for _, k := range keys {
-			e = append(e, fmt.Sprintf("%s=%q", k, m[k]))
+			v := env[k]
+			switch v.(type) {
+			case float64:
+				s := fmt.Sprintf("%s=%f", k, v)
+				s = strings.TrimRight(s, "0")
+				if s[len(s)-1] == '.' {
+					s += "0"
+				}
+				e = append(e, s)
+			case int64:
+				e = append(e, fmt.Sprintf("%s=%d", k, v))
+			case bool:
+				e = append(e, fmt.Sprintf("%s=%v", k, v))
+			default:
+				e = append(e, fmt.Sprintf("%s=%q", k, v))
+			}
 		}
-		o = []byte(strings.Join(e, "\n") + "\n")
+		sep := "\n"
+		if single {
+			sep = " "
+		}
+		o = []byte(strings.Join(e, sep) + sep)
 	default:
 		printUsage()
 	}
