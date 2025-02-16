@@ -26,6 +26,7 @@ build: fmt
 	ln -sf env2x env2json
 	ln -sf env2x env2yaml
 	ln -sf env2x env2env
+	ln -sf env2x env2file
 
 release: clean $(PLATFORMS)
 
@@ -38,6 +39,7 @@ $(PLATFORMS):
 		ln -sf env2x env2json && \
 		ln -sf env2x env2yaml && \
 		ln -sf env2x env2env && \
+		ln -sf env2x env2file && \
 		tar czf ../$(BASE)-$(os)-$(arch).tgz .
 	rm -rf $(RELEASE_DIR)/$(BASE)-$(os)-$(arch)
 

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ var names = []string{
 	"env2json",
 	"env2yaml",
 	"env2env",
+	"env2file",
 }
 
 //go:embed usage.txt
@@ -27,12 +29,14 @@ var usage string
 
 var pretty bool
 var single bool
+var export bool
 
 var name string
 
 func init() {
 	flag.BoolVar(&pretty, "p", false, "pretty print json")
 	flag.BoolVar(&single, "s", false, "single line env")
+	flag.BoolVar(&export, "e", false, "add export")
 	flag.Parse()
 }
 
@@ -44,6 +48,43 @@ func main() {
 
 	if len(args) == 0 {
 		printUsage()
+	}
+
+	if name == "env2file" {
+		key := args[0]
+		value := os.Getenv(key)
+		if len(args) < 2 {
+			fmt.Println(value)
+			os.Exit(0)
+		}
+
+		file, err := filepath.Abs(args[1])
+		if err != nil {
+			fmt.Printf("file name error: %w\n", err)
+			os.Exit(1)
+		}
+
+		perm := os.FileMode(0644)
+		if len(args) > 2 {
+			p, err := strconv.ParseUint(args[2], 8, 32)
+			if err != nil {
+				fmt.Printf("error parsing file mode: %s\n", err)
+				os.Exit(1)
+			}
+			if p > 0 {
+				perm = os.FileMode(p)
+			}
+		}
+
+		err = os.WriteFile(file, []byte(value), perm)
+		if err != nil {
+			fmt.Printf("file write error: %s\n", err)
+			os.Exit(1)
+		}
+		os.Chmod(file, perm)
+
+		fmt.Printf("file written: %s\n", file)
+		os.Exit(0)
 	}
 
 	env := make(map[string]any)
@@ -100,9 +141,15 @@ func main() {
 		}
 		slices.Sort(keys)
 
+		x := ""
+		if export && !single {
+			x = "export "
+		}
+
 		e := make([]string, 0, len(keys))
 		for _, k := range keys {
 			v := env[k]
+			k = x + k
 			switch v.(type) {
 			case float64:
 				s := fmt.Sprintf("%s=%f", k, v)
@@ -119,11 +166,18 @@ func main() {
 				e = append(e, fmt.Sprintf("%s=%q", k, v))
 			}
 		}
+
 		sep := "\n"
 		if single {
 			sep = " "
 		}
-		o = []byte(strings.Join(e, sep) + sep)
+
+		prefix := ""
+		if single && export {
+			prefix = "export "
+		}
+
+		o = []byte(prefix + strings.Join(e, sep) + sep)
 	default:
 		printUsage()
 	}
